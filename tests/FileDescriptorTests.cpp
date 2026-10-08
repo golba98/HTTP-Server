@@ -67,6 +67,14 @@ TEST_CASE("Default-constructed FileDescriptor owns nothing", "[FileDescriptor]")
     CHECK_FALSE(static_cast<bool>(descriptor));
 }
 
+TEST_CASE("FileDescriptor stores any negative value as -1", "[FileDescriptor]")
+{
+    const FileDescriptor descriptor{-5};
+
+    CHECK(descriptor.get() == -1);
+    CHECK_FALSE(descriptor.valid());
+}
+
 TEST_CASE("FileDescriptor takes ownership of a valid descriptor", "[FileDescriptor]")
 {
     const auto [readFd, writeFd] = makePipe();
@@ -244,6 +252,17 @@ TEST_CASE("FileDescriptor reset", "[FileDescriptor]")
         CHECK(descriptor.get() == firstFd);
         CHECK(descriptor.valid());
         CHECK(isOpen(firstFd));
+    }
+
+    SECTION("with a negative value closes the owned descriptor and stores -1")
+    {
+        const FileDescriptor other{secondFd};
+        FileDescriptor descriptor{firstFd};
+
+        descriptor.reset(-5);
+
+        CHECK(isClosed(firstFd));
+        CHECK(descriptor.get() == -1);
     }
 
     SECTION("on an empty descriptor")

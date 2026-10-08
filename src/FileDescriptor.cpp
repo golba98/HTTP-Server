@@ -27,10 +27,17 @@ void closeDescriptor(int fd) noexcept
     errno = savedErrno;
 }
 
+// Every negative value means "owns nothing"; storing one canonical value keeps
+// get() and comparisons predictable.
+int normalize(int fd) noexcept
+{
+    return fd < 0 ? -1 : fd;
+}
+
 } // namespace
 
 FileDescriptor::FileDescriptor(int fd) noexcept
-    : fd_{fd}
+    : fd_{normalize(fd)}
 {
 }
 
@@ -74,6 +81,7 @@ int FileDescriptor::release() noexcept
 
 void FileDescriptor::reset(int newFd) noexcept
 {
+    newFd = normalize(newFd);
     if (newFd == fd_) {
         return;
     }

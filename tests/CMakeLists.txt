@@ -1,16 +1,26 @@
 include(FetchContent)
 
 # SYSTEM keeps the project's warning flags from applying to Catch2's headers.
+# FIND_PACKAGE_ARGS uses an installed Catch2 3 when there is one, so builds can
+# work offline; otherwise CMake downloads the pinned tag.
 FetchContent_Declare(Catch2
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git
     GIT_TAG        v3.16.0
     GIT_SHALLOW    TRUE
     SYSTEM
+    FIND_PACKAGE_ARGS 3
 )
 FetchContent_MakeAvailable(Catch2)
 
 add_executable(http_core_tests
     FileDescriptorTests.cpp
+    MessageTests.cpp
+    PathTests.cpp
+    RequestParserTests.cpp
+    ServerTests.cpp
+    SocketTests.cpp
+    StaticFileTests.cpp
+    ThreadPoolTests.cpp
 )
 set_target_properties(http_core_tests PROPERTIES CXX_EXTENSIONS OFF)
 target_link_libraries(http_core_tests PRIVATE
@@ -19,12 +29,36 @@ target_link_libraries(http_core_tests PRIVATE
     Catch2::Catch2WithMain
 )
 
-list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+# The Catch module lives in the source tree when fetched, and next to the
+# package config when installed.
+if(catch2_SOURCE_DIR)
+    list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+else()
+    list(APPEND CMAKE_MODULE_PATH ${Catch2_DIR})
+endif()
 include(Catch)
 catch_discover_tests(http_core_tests)
 
-# End-to-end check that the executable links against http_core and runs.
-add_test(NAME startup COMMAND http-server)
-set_tests_properties(startup PROPERTIES
-    PASS_REGULAR_EXPRESSION "HTTP server project ready"
+# Command-line checks on the real executable. They exit immediately, unlike a
+# plain run of the server, which blocks until it is signalled.
+add_test(NAME cli.version COMMAND http-server --version)
+set_tests_properties(cli.version PROPERTIES
+    PASS_REGULAR_EXPRESSION "^http-server [0-9]+\\.[0-9]+\\.[0-9]+\n$"
 )
+add_test(NAME cli.help COMMAND http-server --help)
+set_tests_properties(cli.help PROPERTIES
+    PASS_REGULAR_EXPRESSION "Usage: http-server"
+)
+add_test(NAME cli.bad-argument COMMAND http-server --no-such-option)
+set_tests_properties(cli.bad-argument PROPERTIES WILL_FAIL TRUE)
+add_test(NAME cli.missing-root COMMAND http-server --port 0 --root ${CMAKE_CURRENT_BINARY_DIR}/no-such-directory)
+# A regex replaces the exit-status check; the timeout catches a server that
+# starts serving anyway.
+set_tests_properties(cli.missing-root PROPERTIES
+    PASS_REGULAR_EXPRESSION "open document root: No such file or directory"
+    TIMEOUT 10
+)
+
+# Starts the real server, fetches a page with curl and stops it with SIGTERM.
+add_test(NAME smoke COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/smoke.sh $<TARGET_FILE:http-server>)
+set_tests_properties(smoke PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 30)

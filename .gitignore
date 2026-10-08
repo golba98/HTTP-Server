@@ -1,2 +1,9 @@
 /build/
 /build-*/
+
+# libFuzzer artifacts
+crash-*
+leak-*
+oom-*
+slow-unit-*
+timeout-*

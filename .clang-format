@@ -1,0 +1,11 @@
+# Matches the existing hand-written style: 4-space indents, function braces on
+# their own line, unindented namespaces and access specifiers.
+BasedOnStyle: WebKit
+ColumnLimit: 100
+IncludeBlocks: Preserve
+AllowShortFunctionsOnASingleLine: Empty
+BreakBeforeBinaryOperators: None
+FixNamespaceComments: true
+NamespaceIndentation: None
+SpaceBeforeCpp11BracedList: false
+Cpp11BracedListStyle: true

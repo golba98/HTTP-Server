@@ -1,0 +1,28 @@
+# Run with: clang-tidy -p build/debug src/*.cpp app/*.cpp
+Checks: >
+  -*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  -bugprone-easily-swappable-parameters,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-vararg,
+  -modernize-use-designated-initializers,
+  -modernize-use-trailing-return-type,
+  -performance-enum-size
+
+# Why each check above is disabled:
+# - bugprone-easily-swappable-parameters: flags most (int fd, int other) POSIX-style signatures.
+# - cppcoreguidelines-avoid-magic-numbers: HTTP status codes and limits are clearer as literals.
+# - cppcoreguidelines-pro-bounds-avoid-unchecked-container-access: parsers index string_views
+#   after explicit size checks; .at() would add throwing paths to noexcept code.
+# - cppcoreguidelines-pro-type-reinterpret-cast: the sockets API requires sockaddr casts.
+# - cppcoreguidelines-pro-type-vararg: fcntl(), ioctl() and syscall() are variadic.
+# - modernize-use-designated-initializers: {name, value} pairs read better positionally.
+# - modernize-use-trailing-return-type: the project uses leading return types.
+# - performance-enum-size: a handful of enum values never affect memory use here.
+
+HeaderFilterRegex: '.*/include/http/.*'

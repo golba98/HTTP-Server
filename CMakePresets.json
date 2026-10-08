@@ -1,0 +1,122 @@
+{
+    "version": 6,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 25,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/${presetName}",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+            }
+        },
+        {
+            "name": "debug",
+            "displayName": "Debug",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "sanitize",
+            "displayName": "Debug with AddressSanitizer and UndefinedBehaviorSanitizer",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "HTTP_SERVER_ENABLE_SANITIZERS": "ON"
+            }
+        },
+        {
+            "name": "tsan",
+            "displayName": "Debug with ThreadSanitizer (Clang)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "HTTP_SERVER_ENABLE_TSAN": "ON"
+            }
+        },
+        {
+            "name": "fuzz",
+            "displayName": "libFuzzer targets with ASan and UBSan (Clang)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS_DEBUG": "-g -O1",
+                "HTTP_SERVER_ENABLE_SANITIZERS": "ON",
+                "HTTP_SERVER_BUILD_FUZZERS": "ON"
+            }
+        },
+        {
+            "name": "release",
+            "displayName": "Release",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "debug",
+            "configurePreset": "debug"
+        },
+        {
+            "name": "sanitize",
+            "configurePreset": "sanitize"
+        },
+        {
+            "name": "tsan",
+            "configurePreset": "tsan"
+        },
+        {
+            "name": "fuzz",
+            "configurePreset": "fuzz"
+        },
+        {
+            "name": "release",
+            "configurePreset": "release"
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "base",
+            "hidden": true,
+            "output": {
+                "outputOnFailure": true
+            }
+        },
+        {
+            "name": "debug",
+            "inherits": "base",
+            "configurePreset": "debug"
+        },
+        {
+            "name": "sanitize",
+            "inherits": "base",
+            "configurePreset": "sanitize"
+        },
+        {
+            "name": "tsan",
+            "inherits": "base",
+            "configurePreset": "tsan"
+        },
+        {
+            "name": "fuzz",
+            "inherits": "base",
+            "configurePreset": "fuzz"
+        },
+        {
+            "name": "release",
+            "inherits": "base",
+            "configurePreset": "release"
+        }
+    ]
+}
