@@ -65,6 +65,50 @@ jobs:
       - name: Test
         run: ctest --preset tsan
 
+  fuzz:
+    name: fuzz (clang++-18)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libclang-rt-18-dev
+
+      - name: Reduce ASLR entropy for sanitizers
+        run: sudo sysctl vm.mmap_rnd_bits=28
+
+      - name: Configure
+        run: >
+          cmake --preset fuzz
+          -DCMAKE_CXX_COMPILER=clang++-18
+          -DHTTP_SERVER_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build --preset fuzz
+
+      # Also replays the seed corpora once.
+      - name: Test
+        run: ctest --preset fuzz
+
+      # New inputs go to a scratch directory so the checked-in seeds stay as
+      # they are.
+      - name: Fuzz for one minute per target
+        run: |
+          mkdir -p "$RUNNER_TEMP/artifacts"
+          for fuzzer in request_parser path; do
+            mkdir -p "$RUNNER_TEMP/corpus/$fuzzer"
+            "build/fuzz/fuzz/${fuzzer}_fuzzer" -max_total_time=60 -dict=fuzz/http.dict \
+              -artifact_prefix="$RUNNER_TEMP/artifacts/" \
+              "$RUNNER_TEMP/corpus/$fuzzer" "fuzz/corpus/$fuzzer"
+          done
+
+      - name: Upload crashing inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts
+          path: ${{ runner.temp }}/artifacts
+
   lint:
     runs-on: ubuntu-24.04
     steps:

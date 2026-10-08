@@ -112,6 +112,22 @@ TEST_CASE("parseRequestPath rejects malformed targets", "[Path]")
     }
 }
 
+TEST_CASE("parseRequestPath rejects raw bytes that must be percent-encoded", "[Path]")
+{
+    // RequestParser already refuses these, but the path rules must not rely
+    // on that. Found by the path fuzzer.
+    for (const std::string_view target : std::initializer_list<std::string_view>{
+             "/a\0b"sv,
+             "/a b",
+             "/a\tb",
+             "/a\x7f",
+             "/caf\xc3\xa9",
+             "http://example.com/a\0b"sv,
+         }) {
+        CHECK(pathError(target) == Status::BadRequest);
+    }
+}
+
 TEST_CASE("parseRequestPath hides dot-files", "[Path]")
 {
     CHECK(pathError("/.git/config") == Status::NotFound);

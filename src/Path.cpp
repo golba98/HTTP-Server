@@ -2,11 +2,20 @@
 
 #include "Ascii.hpp"
 
+#include <algorithm>
+
 namespace http {
 
 namespace {
 
 constexpr auto npos = std::string_view::npos;
+
+// A request-target is visible ASCII; every other byte must be percent-encoded.
+bool isVisibleAscii(char c) noexcept
+{
+    const auto byte = static_cast<unsigned char>(c);
+    return byte > 0x20 && byte < 0x7f;
+}
 
 int hexDigitValue(char c) noexcept
 {
@@ -62,6 +71,9 @@ std::expected<std::string_view, Status> pathOf(std::string_view target)
 
 std::expected<RequestPath, Status> parseRequestPath(std::string_view target)
 {
+    if (!std::ranges::all_of(target, isVisibleAscii)) {
+        return std::unexpected{Status::BadRequest};
+    }
     const auto path = pathOf(target);
     if (!path) {
         return std::unexpected{path.error()};

@@ -43,6 +43,18 @@
             }
         },
         {
+            "name": "fuzz",
+            "displayName": "libFuzzer targets with ASan and UBSan (Clang)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "CMAKE_CXX_FLAGS_DEBUG": "-g -O1",
+                "HTTP_SERVER_ENABLE_SANITIZERS": "ON",
+                "HTTP_SERVER_BUILD_FUZZERS": "ON"
+            }
+        },
+        {
             "name": "release",
             "displayName": "Release",
             "inherits": "base",
@@ -63,6 +75,10 @@
         {
             "name": "tsan",
             "configurePreset": "tsan"
+        },
+        {
+            "name": "fuzz",
+            "configurePreset": "fuzz"
         },
         {
             "name": "release",
@@ -91,6 +107,11 @@
             "name": "tsan",
             "inherits": "base",
             "configurePreset": "tsan"
+        },
+        {
+            "name": "fuzz",
+            "inherits": "base",
+            "configurePreset": "fuzz"
         },
         {
             "name": "release",

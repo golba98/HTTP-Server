@@ -10,6 +10,10 @@ option(HTTP_SERVER_ENABLE_TSAN
     "Build project targets with ThreadSanitizer (Debug only)"
     OFF
 )
+option(HTTP_SERVER_BUILD_FUZZERS
+    "Build libFuzzer targets for the parsers (Clang only)"
+    OFF
+)
 option(HTTP_SERVER_WARNINGS_AS_ERRORS
     "Treat compiler warnings in project targets as errors (used by CI)"
     OFF
@@ -70,6 +74,18 @@ if(HTTP_SERVER_ENABLE_SANITIZERS OR HTTP_SERVER_ENABLE_TSAN)
     )
 endif()
 
+if(HTTP_SERVER_BUILD_FUZZERS)
+    if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        message(FATAL_ERROR
+            "HTTP_SERVER_BUILD_FUZZERS requires Clang for libFuzzer "
+            "(found ${CMAKE_CXX_COMPILER_ID})")
+    endif()
+    # Coverage instrumentation for everything the fuzzers link against; the
+    # fuzzer executables add the libFuzzer runtime themselves.
+    target_compile_options(http_server_sanitizers INTERFACE -fsanitize=fuzzer-no-link)
+    target_link_options(http_server_sanitizers INTERFACE -fsanitize=fuzzer-no-link)
+endif()
+
 add_library(http_core STATIC
     src/Connection.cpp
     src/FileDescriptor.cpp
@@ -102,4 +118,8 @@ include(CTest)
 
 if(BUILD_TESTING)
     add_subdirectory(tests)
+endif()
+
+if(HTTP_SERVER_BUILD_FUZZERS)
+    add_subdirectory(fuzz)
 endif()
