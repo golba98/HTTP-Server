@@ -57,7 +57,10 @@ endif()
 
 add_library(http_core STATIC
     src/FileDescriptor.cpp
+    src/Message.cpp
+    src/RequestParser.cpp
     src/Socket.cpp
+    src/Status.cpp
 )
 target_include_directories(http_core
     PUBLIC ${PROJECT_SOURCE_DIR}/include
