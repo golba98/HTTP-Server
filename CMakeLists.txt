@@ -58,8 +58,10 @@ endif()
 add_library(http_core STATIC
     src/FileDescriptor.cpp
     src/Message.cpp
+    src/Path.cpp
     src/RequestParser.cpp
     src/Socket.cpp
+    src/StaticFiles.cpp
     src/Status.cpp
 )
 target_include_directories(http_core

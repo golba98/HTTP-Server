@@ -15,8 +15,10 @@ FetchContent_MakeAvailable(Catch2)
 add_executable(http_core_tests
     FileDescriptorTests.cpp
     MessageTests.cpp
+    PathTests.cpp
     RequestParserTests.cpp
     SocketTests.cpp
+    StaticFileTests.cpp
 )
 set_target_properties(http_core_tests PROPERTIES CXX_EXTENSIONS OFF)
 target_link_libraries(http_core_tests PRIVATE
