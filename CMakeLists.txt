@@ -63,6 +63,7 @@ add_library(http_core STATIC
     src/Socket.cpp
     src/StaticFiles.cpp
     src/Status.cpp
+    src/ThreadPool.cpp
 )
 target_include_directories(http_core
     PUBLIC ${PROJECT_SOURCE_DIR}/include
