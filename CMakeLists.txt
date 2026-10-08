@@ -6,6 +6,10 @@ option(HTTP_SERVER_ENABLE_SANITIZERS
     "Build project targets with AddressSanitizer and UndefinedBehaviorSanitizer (Debug only)"
     OFF
 )
+option(HTTP_SERVER_ENABLE_TSAN
+    "Build project targets with ThreadSanitizer (Debug only)"
+    OFF
+)
 option(HTTP_SERVER_WARNINGS_AS_ERRORS
     "Treat compiler warnings in project targets as errors (used by CI)"
     OFF
@@ -29,29 +33,40 @@ target_compile_options(http_server_warnings INTERFACE
 # instrumented library is also compiled and linked with the sanitizer runtime.
 add_library(http_server_sanitizers INTERFACE)
 
-if(HTTP_SERVER_ENABLE_SANITIZERS)
+if(HTTP_SERVER_ENABLE_SANITIZERS AND HTTP_SERVER_ENABLE_TSAN)
+    message(FATAL_ERROR
+        "ThreadSanitizer cannot run together with AddressSanitizer; enable only one "
+        "of HTTP_SERVER_ENABLE_SANITIZERS and HTTP_SERVER_ENABLE_TSAN")
+endif()
+
+if(HTTP_SERVER_ENABLE_SANITIZERS OR HTTP_SERVER_ENABLE_TSAN)
     if(NOT CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|AppleClang)$")
         message(FATAL_ERROR
-            "HTTP_SERVER_ENABLE_SANITIZERS requires GCC or Clang "
-            "(found ${CMAKE_CXX_COMPILER_ID})")
+            "Sanitizers require GCC or Clang (found ${CMAKE_CXX_COMPILER_ID})")
     endif()
 
     get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
     if(NOT is_multi_config AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
         message(WARNING
-            "HTTP_SERVER_ENABLE_SANITIZERS only applies to Debug builds; "
-            "sanitizers are disabled for build type '${CMAKE_BUILD_TYPE}'")
+            "Sanitizers only apply to Debug builds; they are disabled for build "
+            "type '${CMAKE_BUILD_TYPE}'")
+    endif()
+
+    if(HTTP_SERVER_ENABLE_SANITIZERS)
+        set(http_server_sanitize address,undefined)
+    else()
+        set(http_server_sanitize thread)
     endif()
 
     # -fno-sanitize-recover makes UBSan abort on the first error so tests fail
     # instead of printing a report and carrying on.
     target_compile_options(http_server_sanitizers INTERFACE
-        $<$<CONFIG:Debug>:-fsanitize=address,undefined>
-        $<$<CONFIG:Debug>:-fno-sanitize-recover=undefined>
+        $<$<CONFIG:Debug>:-fsanitize=${http_server_sanitize}>
+        $<$<AND:$<CONFIG:Debug>,$<BOOL:${HTTP_SERVER_ENABLE_SANITIZERS}>>:-fno-sanitize-recover=undefined>
         $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
     )
     target_link_options(http_server_sanitizers INTERFACE
-        $<$<CONFIG:Debug>:-fsanitize=address,undefined>
+        $<$<CONFIG:Debug>:-fsanitize=${http_server_sanitize}>
     )
 endif()
 

@@ -33,6 +33,16 @@
             }
         },
         {
+            "name": "tsan",
+            "displayName": "Debug with ThreadSanitizer (Clang)",
+            "inherits": "base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_CXX_COMPILER": "clang++",
+                "HTTP_SERVER_ENABLE_TSAN": "ON"
+            }
+        },
+        {
             "name": "release",
             "displayName": "Release",
             "inherits": "base",
@@ -49,6 +59,10 @@
         {
             "name": "sanitize",
             "configurePreset": "sanitize"
+        },
+        {
+            "name": "tsan",
+            "configurePreset": "tsan"
         },
         {
             "name": "release",
@@ -72,6 +86,11 @@
             "name": "sanitize",
             "inherits": "base",
             "configurePreset": "sanitize"
+        },
+        {
+            "name": "tsan",
+            "inherits": "base",
+            "configurePreset": "tsan"
         },
         {
             "name": "release",

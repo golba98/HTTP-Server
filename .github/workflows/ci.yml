@@ -20,8 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Ninja
-        run: sudo apt-get update && sudo apt-get install -y ninja-build
+      # libclang-rt provides Clang's sanitizer runtimes.
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libclang-rt-18-dev
 
       # The runners' high ASLR entropy breaks older sanitizer runtimes.
       - name: Reduce ASLR entropy for sanitizers
@@ -39,6 +40,30 @@ jobs:
 
       - name: Test
         run: ctest --preset ${{ matrix.preset }}
+
+  tsan:
+    name: tsan (clang++-18)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libclang-rt-18-dev
+
+      - name: Reduce ASLR entropy for sanitizers
+        run: sudo sysctl vm.mmap_rnd_bits=28
+
+      - name: Configure
+        run: >
+          cmake --preset tsan
+          -DCMAKE_CXX_COMPILER=clang++-18
+          -DHTTP_SERVER_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build --preset tsan
+
+      - name: Test
+        run: ctest --preset tsan
 
   lint:
     runs-on: ubuntu-24.04
