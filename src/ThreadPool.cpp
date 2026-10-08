@@ -43,7 +43,7 @@ void ThreadPool::stop() noexcept
     wake_.notify_all();
 }
 
-bool ThreadPool::trySubmit(Task task)
+bool ThreadPool::trySubmit(Task&& task)
 {
     {
         const std::scoped_lock lock{mutex_};

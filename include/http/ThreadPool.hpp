@@ -28,8 +28,10 @@ public:
     ThreadPool(ThreadPool&&) = delete;
     ThreadPool& operator=(ThreadPool&&) = delete;
 
-    // Queues `task`, or returns false and drops it if the queue is full.
-    [[nodiscard]] bool trySubmit(Task task);
+    // Queues `task` and returns true, or returns false if the queue is full.
+    // A rejected task is left untouched, so the caller can still use what it
+    // captured, e.g. to tell a client that the server is busy.
+    [[nodiscard]] bool trySubmit(Task&& task);
 
 private:
     void work();

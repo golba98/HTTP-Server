@@ -56,10 +56,12 @@ if(HTTP_SERVER_ENABLE_SANITIZERS)
 endif()
 
 add_library(http_core STATIC
+    src/Connection.cpp
     src/FileDescriptor.cpp
     src/Message.cpp
     src/Path.cpp
     src/RequestParser.cpp
+    src/Server.cpp
     src/Socket.cpp
     src/StaticFiles.cpp
     src/Status.cpp

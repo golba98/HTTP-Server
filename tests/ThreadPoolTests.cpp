@@ -106,6 +106,30 @@ TEST_CASE("ThreadPool rejects tasks when its queue is full", "[ThreadPool]")
     CHECK_FALSE(rejectedRan);
 }
 
+TEST_CASE("ThreadPool leaves a rejected task with the caller", "[ThreadPool]")
+{
+    Gate release;
+    std::promise<void> started;
+    ThreadPool pool{1, 1};
+    REQUIRE(pool.trySubmit([&] {
+        started.set_value();
+        release.waitFor(5s);
+    }));
+    REQUIRE(started.get_future().wait_for(5s) == std::future_status::ready);
+    REQUIRE(pool.trySubmit([] { }));
+
+    bool ran = false;
+    ThreadPool::Task task = [&ran] { ran = true; };
+    CHECK_FALSE(pool.trySubmit(std::move(task)));
+
+    // The caller still owns the task, and whatever it captured.
+    REQUIRE(static_cast<bool>(task));
+    task();
+    CHECK(ran);
+
+    release.open();
+}
+
 TEST_CASE("ThreadPool destructor finishes the queued tasks", "[ThreadPool]")
 {
     Gate release;

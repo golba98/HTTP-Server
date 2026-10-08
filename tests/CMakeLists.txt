@@ -17,6 +17,7 @@ add_executable(http_core_tests
     MessageTests.cpp
     PathTests.cpp
     RequestParserTests.cpp
+    ServerTests.cpp
     SocketTests.cpp
     StaticFileTests.cpp
     ThreadPoolTests.cpp
@@ -50,3 +51,14 @@ set_tests_properties(cli.help PROPERTIES
 )
 add_test(NAME cli.bad-argument COMMAND http-server --no-such-option)
 set_tests_properties(cli.bad-argument PROPERTIES WILL_FAIL TRUE)
+add_test(NAME cli.missing-root COMMAND http-server --port 0 --root ${CMAKE_CURRENT_BINARY_DIR}/no-such-directory)
+# A regex replaces the exit-status check; the timeout catches a server that
+# starts serving anyway.
+set_tests_properties(cli.missing-root PROPERTIES
+    PASS_REGULAR_EXPRESSION "open document root: No such file or directory"
+    TIMEOUT 10
+)
+
+# Starts the real server, fetches a page with curl and stops it with SIGTERM.
+add_test(NAME smoke COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/smoke.sh $<TARGET_FILE:http-server>)
+set_tests_properties(smoke PROPERTIES SKIP_RETURN_CODE 77 TIMEOUT 30)
