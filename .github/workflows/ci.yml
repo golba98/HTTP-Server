@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: ${{ matrix.preset }} (${{ matrix.compiler }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++-14, clang++-18]
+        preset: [debug, sanitize]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      # The runners' high ASLR entropy breaks older sanitizer runtimes.
+      - name: Reduce ASLR entropy for sanitizers
+        if: matrix.preset != 'debug'
+        run: sudo sysctl vm.mmap_rnd_bits=28
+
+      - name: Configure
+        run: >
+          cmake --preset ${{ matrix.preset }}
+          -DCMAKE_CXX_COMPILER=${{ matrix.compiler }}
+          -DHTTP_SERVER_WARNINGS_AS_ERRORS=ON
+
+      - name: Build
+        run: cmake --build --preset ${{ matrix.preset }}
+
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
+
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pinned to the same LLVM major as the development machine so local and
+      # CI formatting agree.
+      - name: Install tools
+        run: |
+          sudo apt-get update && sudo apt-get install -y ninja-build
+          pip install clang-format==22.1.8 clang-tidy==22.1.8
+
+      - name: clang-format
+        run: clang-format --dry-run --Werror $(git ls-files '*.cpp' '*.hpp')
+
+      - name: Configure for clang-tidy
+        run: cmake --preset debug -DCMAKE_CXX_COMPILER=clang++-18
+
+      - name: clang-tidy
+        run: clang-tidy -p build/debug --warnings-as-errors='*' $(git ls-files 'src/*.cpp' 'app/*.cpp')

@@ -1,0 +1,21 @@
+# Run with: clang-tidy -p build/debug src/*.cpp app/*.cpp
+Checks: >
+  -*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  -bugprone-easily-swappable-parameters,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-vararg,
+  -modernize-use-trailing-return-type
+
+# Why each check above is disabled:
+# - bugprone-easily-swappable-parameters: flags most (int fd, int other) POSIX-style signatures.
+# - cppcoreguidelines-avoid-magic-numbers: HTTP status codes and limits are clearer as literals.
+# - cppcoreguidelines-pro-type-reinterpret-cast: the sockets API requires sockaddr casts.
+# - cppcoreguidelines-pro-type-vararg: fcntl(), ioctl() and syscall() are variadic.
+# - modernize-use-trailing-return-type: the project uses leading return types.
+
+HeaderFilterRegex: '.*/include/http/.*'

@@ -1,11 +1,14 @@
 include(FetchContent)
 
 # SYSTEM keeps the project's warning flags from applying to Catch2's headers.
+# FIND_PACKAGE_ARGS uses an installed Catch2 3 when there is one, so builds can
+# work offline; otherwise CMake downloads the pinned tag.
 FetchContent_Declare(Catch2
     GIT_REPOSITORY https://github.com/catchorg/Catch2.git
     GIT_TAG        v3.16.0
     GIT_SHALLOW    TRUE
     SYSTEM
+    FIND_PACKAGE_ARGS 3
 )
 FetchContent_MakeAvailable(Catch2)
 
@@ -19,7 +22,13 @@ target_link_libraries(http_core_tests PRIVATE
     Catch2::Catch2WithMain
 )
 
-list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+# The Catch module lives in the source tree when fetched, and next to the
+# package config when installed.
+if(catch2_SOURCE_DIR)
+    list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+else()
+    list(APPEND CMAKE_MODULE_PATH ${Catch2_DIR})
+endif()
 include(Catch)
 catch_discover_tests(http_core_tests)
 

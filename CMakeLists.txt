@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(cpp_http_server LANGUAGES CXX)
+project(cpp_http_server VERSION 0.1.0 LANGUAGES CXX)
 
 option(HTTP_SERVER_ENABLE_SANITIZERS
     "Build project targets with AddressSanitizer and UndefinedBehaviorSanitizer (Debug only)"
+    OFF
+)
+option(HTTP_SERVER_WARNINGS_AS_ERRORS
+    "Treat compiler warnings in project targets as errors (used by CI)"
     OFF
 )
 
@@ -16,6 +20,9 @@ target_compile_options(http_server_warnings INTERFACE
     -Wpedantic
     -Wconversion
     -Wshadow
+    -Wsign-conversion
+    -Wold-style-cast
+    $<$<BOOL:${HTTP_SERVER_WARNINGS_AS_ERRORS}>:-Werror>
 )
 
 # Sanitizer flags. Linked PUBLIC from http_core so every consumer of an
@@ -51,8 +58,11 @@ endif()
 add_library(http_core STATIC
     src/FileDescriptor.cpp
 )
-target_include_directories(http_core PUBLIC ${PROJECT_SOURCE_DIR}/include)
-target_compile_features(http_core PUBLIC cxx_std_20)
+target_include_directories(http_core
+    PUBLIC ${PROJECT_SOURCE_DIR}/include
+    PRIVATE ${PROJECT_SOURCE_DIR}/src
+)
+target_compile_features(http_core PUBLIC cxx_std_23)
 set_target_properties(http_core PROPERTIES CXX_EXTENSIONS OFF)
 target_link_libraries(http_core
     PUBLIC http_server_sanitizers
