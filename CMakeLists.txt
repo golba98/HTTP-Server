@@ -57,6 +57,7 @@ endif()
 
 add_library(http_core STATIC
     src/FileDescriptor.cpp
+    src/Socket.cpp
 )
 target_include_directories(http_core
     PUBLIC ${PROJECT_SOURCE_DIR}/include
