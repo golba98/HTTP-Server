@@ -32,8 +32,15 @@ endif()
 include(Catch)
 catch_discover_tests(http_core_tests)
 
-# End-to-end check that the executable links against http_core and runs.
-add_test(NAME startup COMMAND http-server)
-set_tests_properties(startup PROPERTIES
-    PASS_REGULAR_EXPRESSION "HTTP server project ready"
+# Command-line checks on the real executable. They exit immediately, unlike a
+# plain run of the server, which blocks until it is signalled.
+add_test(NAME cli.version COMMAND http-server --version)
+set_tests_properties(cli.version PROPERTIES
+    PASS_REGULAR_EXPRESSION "^http-server [0-9]+\\.[0-9]+\\.[0-9]+\n$"
 )
+add_test(NAME cli.help COMMAND http-server --help)
+set_tests_properties(cli.help PROPERTIES
+    PASS_REGULAR_EXPRESSION "Usage: http-server"
+)
+add_test(NAME cli.bad-argument COMMAND http-server --no-such-option)
+set_tests_properties(cli.bad-argument PROPERTIES WILL_FAIL TRUE)

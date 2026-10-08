@@ -3,7 +3,7 @@
 namespace http {
 
 // Move-only owner of a POSIX file descriptor. Any negative value means the
-// object owns nothing; the default state is -1. An owned descriptor is closed
+// object owns nothing and is stored as -1. An owned descriptor is closed
 // exactly once, when the owner is destroyed, reset, or move-assigned over.
 class FileDescriptor {
 public:

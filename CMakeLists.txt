@@ -72,6 +72,7 @@ target_link_libraries(http_core
 add_executable(http-server app/main.cpp)
 set_target_properties(http-server PROPERTIES CXX_EXTENSIONS OFF)
 target_link_libraries(http-server PRIVATE http_core http_server_warnings)
+target_compile_definitions(http-server PRIVATE HTTP_SERVER_VERSION="${PROJECT_VERSION}")
 
 include(CTest)
 
