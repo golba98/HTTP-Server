@@ -237,9 +237,61 @@ they do not affect fetched dependencies:
   before starting any thread, and a dedicated thread picks them up with
   `sigtimedwait()`. That avoids asynchronous signal handlers entirely.
 
+## Listening socket (Stage 2B)
+
+`http::TcpListener` (`include/http/Socket.hpp`) owns the server's listening
+socket. `TcpListener::bind(address, port, backlog)` does the following, in order:
+
+1. `socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC | SOCK_NONBLOCK)`. The
+   descriptor goes straight into a `FileDescriptor`, so if a later step
+   throws, the socket is closed.
+2. `setsockopt(SO_REUSEADDR)`, so a restarted server can bind while old
+   connections on the port are still in `TIME_WAIT`. It does not let two live
+   listeners share a port.
+3. `bind()` to the IPv4 address and port. Port 0 asks the kernel for a free
+   ephemeral port.
+4. `listen()` with the given backlog (default `SOMAXCONN`).
+
+`port()` reads the bound port back with `getsockname()`. That gives the real
+port when you bind to 0. `accept()` returns each connection as its own
+`FileDescriptor`.
+
+The listener is move-only. Moving it transfers the socket, and a moved-from
+listener owns nothing (`fd()` is -1). The socket closes when the owning
+listener is destroyed or move-assigned over. Failed system calls throw
+`std::system_error` with the errno and the call name (for example
+`bind: Address already in use`). A malformed address throws
+`std::invalid_argument`.
+
+To run only the socket tests:
+
+```bash
+cmake --preset debug && cmake --build --preset debug
+./build/debug/tests/http_core_tests "[Socket]"
+```
+
+The tests use only loopback and kernel-chosen ports, and need no root or
+network access. They check:
+
+- the socket options and bound address
+- move construction and move assignment
+- closing on destruction
+- each backlog value works
+- `EADDRINUSE`
+- a `SO_REUSEADDR` rebind
+- no descriptor leaks, after failed binds and after 1000 create/destroy cycles
+
+Limitations:
+
+- IPv4 only, and the address must be numeric (no hostname lookup).
+- Linux caps the backlog at `net.core.somaxconn` and does not report the value
+  in effect, so the tests can only check that each value gives a working
+  listener.
+- A `Server` has exactly one listener.
+
 ## Possible next steps
 
-- IPv6 and dual-stack listening
+- IPv6 and dual-stack listening (recommended next milestone, Stage 2C)
 - Conditional requests (`ETag`, `If-Modified-Since`) and `Range` requests
 - An `epoll`-based event loop, to compare with the thread pool
 - TLS
