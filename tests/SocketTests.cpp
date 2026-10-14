@@ -1,16 +1,25 @@
 #include "http/Socket.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <catch2/generators/catch_generators.hpp>
 
+#include <cerrno>
 #include <cstddef>
+#include <cstdint>
+#include <filesystem>
 #include <future>
+#include <iterator>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <type_traits>
 #include <utility>
 
+#include <arpa/inet.h>
 #include <fcntl.h>
+#include <netinet/in.h>
 #include <sys/mman.h>
 #include <unistd.h>
 
@@ -71,6 +80,37 @@ bool isNonBlocking(int fd)
     return (::fcntl(fd, F_GETFL) & O_NONBLOCK) != 0;
 }
 
+// POSIX hands out the lowest free descriptor number, so a test must not create
+// new descriptors between closing one and checking that it is closed.
+
+bool isOpen(int fd)
+{
+    errno = 0;
+    return ::fcntl(fd, F_GETFD) != -1;
+}
+
+bool isClosed(int fd)
+{
+    errno = 0;
+    return ::fcntl(fd, F_GETFD) == -1 && errno == EBADF;
+}
+
+int intOption(int fd, int level, int name)
+{
+    int value = 0;
+    socklen_t length = sizeof value;
+    REQUIRE(::getsockopt(fd, level, name, &value, &length) == 0);
+    return value;
+}
+
+// The number of descriptors this process has open. The directory iterator
+// holds one itself, which cancels out when two counts are compared.
+std::size_t openDescriptorCount()
+{
+    const std::filesystem::directory_iterator entries{"/proc/self/fd"};
+    return static_cast<std::size_t>(std::distance(begin(entries), end(entries)));
+}
+
 } // namespace
 
 TEST_CASE("TcpListener bound to port 0 reports the port the kernel chose", "[Socket]")
@@ -126,6 +166,181 @@ TEST_CASE("TcpListener bind rejects a malformed address", "[Socket]")
 {
     CHECK_THROWS_AS(TcpListener::bind("not-an-address", 0), std::invalid_argument);
     CHECK_THROWS_AS(http::connectTcp("256.0.0.1", 80), std::invalid_argument);
+}
+
+TEST_CASE("TcpListener listens on the requested loopback address", "[Socket]")
+{
+    const auto listener = TcpListener::bind(loopback, 0);
+
+    CHECK(intOption(listener.fd(), SOL_SOCKET, SO_ACCEPTCONN) == 1);
+    CHECK(intOption(listener.fd(), SOL_SOCKET, SO_TYPE) == SOCK_STREAM);
+    CHECK(intOption(listener.fd(), SOL_SOCKET, SO_DOMAIN) == AF_INET);
+    CHECK(intOption(listener.fd(), SOL_SOCKET, SO_REUSEADDR) != 0);
+
+    sockaddr_in bound{};
+    socklen_t length = sizeof bound;
+    REQUIRE(::getsockname(listener.fd(), reinterpret_cast<sockaddr*>(&bound), &length) == 0);
+    CHECK(bound.sin_family == AF_INET);
+    CHECK(ntohl(bound.sin_addr.s_addr) == INADDR_LOOPBACK);
+    CHECK(ntohs(bound.sin_port) == listener.port());
+}
+
+TEST_CASE("TcpListener is move-only", "[Socket]")
+{
+    STATIC_REQUIRE_FALSE(std::is_copy_constructible_v<TcpListener>);
+    STATIC_REQUIRE_FALSE(std::is_copy_assignable_v<TcpListener>);
+
+    STATIC_REQUIRE(std::is_nothrow_move_constructible_v<TcpListener>);
+    STATIC_REQUIRE(std::is_nothrow_move_assignable_v<TcpListener>);
+    STATIC_REQUIRE(std::is_nothrow_destructible_v<TcpListener>);
+}
+
+TEST_CASE("TcpListener move construction transfers the socket", "[Socket]")
+{
+    std::optional<TcpListener> destination;
+    int fd = -1;
+    std::uint16_t port = 0;
+    {
+        auto source = TcpListener::bind(loopback, 0);
+        fd = source.fd();
+        port = source.port();
+
+        destination.emplace(std::move(source));
+
+        CHECK(destination->fd() == fd);
+        CHECK(destination->port() == port);
+        CHECK(source.fd() == -1);
+    }
+
+    // The moved-from source is gone and must not have closed the socket.
+    CHECK(isOpen(fd));
+
+    destination.reset();
+    CHECK(isClosed(fd));
+}
+
+TEST_CASE("TcpListener move assignment closes the old socket and takes the new one", "[Socket]")
+{
+    auto destination = TcpListener::bind(loopback, 0);
+    auto source = TcpListener::bind(loopback, 0);
+    const int oldFd = destination.fd();
+    const int newFd = source.fd();
+    const std::uint16_t newPort = source.port();
+
+    destination = std::move(source);
+
+    CHECK(isClosed(oldFd));
+    CHECK(destination.fd() == newFd);
+    CHECK(destination.port() == newPort);
+    CHECK(source.fd() == -1);
+    CHECK(isOpen(newFd));
+}
+
+TEST_CASE("A moved-from TcpListener fails cleanly", "[Socket]")
+{
+    auto source = TcpListener::bind(loopback, 0);
+    const TcpListener destination{std::move(source)};
+
+    std::error_code code;
+    try {
+        static_cast<void>(source.port());
+    } catch (const std::system_error& error) {
+        code = error.code();
+    }
+    CHECK(code == std::errc::bad_file_descriptor);
+
+    const auto accepted = source.accept();
+    REQUIRE_FALSE(accepted.has_value());
+    CHECK(accepted.error() == std::errc::bad_file_descriptor);
+}
+
+TEST_CASE("TcpListener destructor closes the socket and releases the port", "[Socket]")
+{
+    int fd = -1;
+    std::uint16_t port = 0;
+    {
+        const auto listener = TcpListener::bind(loopback, 0);
+        fd = listener.fd();
+        port = listener.port();
+        REQUIRE(isOpen(fd));
+    }
+
+    CHECK(isClosed(fd));
+
+    // A live listener would make this fail with EADDRINUSE.
+    const auto rebound = TcpListener::bind(loopback, port);
+    CHECK(rebound.port() == port);
+}
+
+TEST_CASE("TcpListener accepts a configurable backlog", "[Socket]")
+{
+    // Linux does not report a socket's backlog, and caps it at
+    // net.core.somaxconn, so this only checks that each value gives a working
+    // listener. Every backlog admits at least one pending connection.
+    const int backlog = GENERATE(1, 16, SOMAXCONN);
+    CAPTURE(backlog);
+
+    const auto listener = TcpListener::bind(loopback, 0, backlog);
+    const auto client = http::connectTcp(loopback, listener.port());
+    const auto accepted = listener.accept();
+
+    REQUIRE(accepted.has_value());
+    CHECK(accepted->valid());
+}
+
+TEST_CASE("SO_REUSEADDR lets a new listener bind while an old connection is closing", "[Socket]")
+{
+    std::uint16_t port = 0;
+    {
+        auto [listener, client, server] = connectPair();
+        port = listener.port();
+
+        // The server side closes first, so its end of the connection lingers
+        // in FIN_WAIT or TIME_WAIT on `port` after everything is destroyed.
+        // Without SO_REUSEADDR, binding the port again fails while it does.
+        server.reset();
+        client.reset();
+    }
+
+    const auto rebound = TcpListener::bind(loopback, port);
+    CHECK(rebound.port() == port);
+}
+
+TEST_CASE("Failed TcpListener::bind leaks no descriptors", "[Socket]")
+{
+    const auto occupied = TcpListener::bind(loopback, 0);
+    const std::size_t before = openDescriptorCount();
+
+    SECTION("address in use")
+    {
+        std::error_code code;
+        try {
+            static_cast<void>(TcpListener::bind(loopback, occupied.port()));
+        } catch (const std::system_error& error) {
+            code = error.code();
+        }
+
+        CHECK(code == std::errc::address_in_use);
+    }
+
+    SECTION("malformed address")
+    {
+        CHECK_THROWS_AS(TcpListener::bind("not-an-address", 0), std::invalid_argument);
+    }
+
+    CHECK(openDescriptorCount() == before);
+}
+
+TEST_CASE("Repeated TcpListener creation and destruction leaks no descriptors", "[Socket]")
+{
+    const std::size_t before = openDescriptorCount();
+
+    for (int i = 0; i < 1000; ++i) {
+        const auto listener = TcpListener::bind(loopback, 0);
+        REQUIRE(listener.port() != 0);
+    }
+
+    CHECK(openDescriptorCount() == before);
 }
 
 TEST_CASE("Connected sockets carry data in both directions", "[Socket]")

@@ -15,6 +15,7 @@ namespace http {
 
 // A listening IPv4 TCP socket. The socket itself is non-blocking so that a
 // connection reset between poll() and accept() cannot stall the caller.
+// Move-only: a moved-from listener owns no socket and its fd() is -1.
 class TcpListener {
 public:
     // Binds to `address` (dotted IPv4, e.g. "127.0.0.1") and starts listening.
