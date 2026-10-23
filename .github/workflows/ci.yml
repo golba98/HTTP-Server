@@ -24,7 +24,7 @@ jobs:
       # libclang-rt provides Clang's sanitizer runtimes.
       - name: Install LLVM 20
         run: |
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.txt | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
           echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm20.list
           sudo apt-get update && sudo apt-get install -y clang-20 libclang-rt-20-dev
       - name: Install tools
@@ -55,7 +55,7 @@ jobs:
 
       - name: Install LLVM 20
         run: |
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.txt | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
           echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm20.list
           sudo apt-get update && sudo apt-get install -y clang-20 libclang-rt-20-dev
       - name: Install tools
@@ -84,7 +84,7 @@ jobs:
 
       - name: Install LLVM 20
         run: |
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.txt | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
           echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm20.list
           sudo apt-get update && sudo apt-get install -y clang-20 libclang-rt-20-dev
       - name: Install tools
