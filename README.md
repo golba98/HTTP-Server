@@ -27,7 +27,7 @@ AddressSanitizer, UndefinedBehaviorSanitizer, ThreadSanitizer, and libFuzzer.
 ## Prerequisites
 
 - Linux 5.6 or newer (for `openat2`); development environment: Fedora
-- GCC or Clang with C++23 support (GCC 14+, Clang 18+)
+- GCC or Clang with C++23 support (GCC 14+, Clang 20+)
 - CMake 3.25 or newer
 - Ninja
 - Network access the first time you configure, so CMake can download
@@ -164,7 +164,7 @@ lists a reason for each check it disables.
 
 `.github/workflows/ci.yml` runs on pushes to `main` and on pull requests:
 
-- `debug` and `sanitize` builds with GCC 14 and Clang 18
+- `debug` and `sanitize` builds with GCC 14 and Clang 20
 - `tsan`
 - `fuzz`, with one minute of fuzzing per target
 - clang-format and clang-tidy checks

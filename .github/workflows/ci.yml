@@ -16,14 +16,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        compiler: [g++-14, clang++-18]
+        compiler: [g++-14, clang++-20]
         preset: [debug, sanitize]
     steps:
       - uses: actions/checkout@v4
 
       # libclang-rt provides Clang's sanitizer runtimes.
+      - name: Install LLVM 20
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.txt | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
+          echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm20.list
+          sudo apt-get update && sudo apt-get install -y clang-20 libclang-rt-20-dev
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libclang-rt-18-dev
+        run: sudo apt-get install -y ninja-build
 
       # The runners' high ASLR entropy breaks older sanitizer runtimes.
       - name: Reduce ASLR entropy for sanitizers
@@ -43,13 +48,18 @@ jobs:
         run: ctest --preset ${{ matrix.preset }}
 
   tsan:
-    name: tsan (clang++-18)
+    name: tsan (clang++-20)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install LLVM 20
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.txt | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
+          echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm20.list
+          sudo apt-get update && sudo apt-get install -y clang-20 libclang-rt-20-dev
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libclang-rt-18-dev
+        run: sudo apt-get install -y ninja-build
 
       - name: Reduce ASLR entropy for sanitizers
         run: sudo sysctl vm.mmap_rnd_bits=28
@@ -57,7 +67,7 @@ jobs:
       - name: Configure
         run: >
           cmake --preset tsan
-          -DCMAKE_CXX_COMPILER=clang++-18
+          -DCMAKE_CXX_COMPILER=clang++-20
           -DHTTP_SERVER_WARNINGS_AS_ERRORS=ON
 
       - name: Build
@@ -67,13 +77,18 @@ jobs:
         run: ctest --preset tsan
 
   fuzz:
-    name: fuzz (clang++-18)
+    name: fuzz (clang++-20)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install LLVM 20
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.txt | sudo gpg --dearmor -o /usr/share/keyrings/llvm.gpg
+          echo "deb [signed-by=/usr/share/keyrings/llvm.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-20 main" | sudo tee /etc/apt/sources.list.d/llvm20.list
+          sudo apt-get update && sudo apt-get install -y clang-20 libclang-rt-20-dev
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libclang-rt-18-dev
+        run: sudo apt-get install -y ninja-build
 
       - name: Reduce ASLR entropy for sanitizers
         run: sudo sysctl vm.mmap_rnd_bits=28
@@ -81,7 +96,7 @@ jobs:
       - name: Configure
         run: >
           cmake --preset fuzz
-          -DCMAKE_CXX_COMPILER=clang++-18
+          -DCMAKE_CXX_COMPILER=clang++-20
           -DHTTP_SERVER_WARNINGS_AS_ERRORS=ON
 
       - name: Build
@@ -126,7 +141,7 @@ jobs:
         run: clang-format --dry-run --Werror $(git ls-files '*.cpp' '*.hpp')
 
       - name: Configure for clang-tidy
-        run: cmake --preset debug -DCMAKE_CXX_COMPILER=clang++-18
+        run: cmake --preset debug -DCMAKE_CXX_COMPILER=clang++-20
 
       - name: clang-tidy
         run: clang-tidy -p build/debug --warnings-as-errors='*' $(git ls-files 'src/*.cpp' 'app/*.cpp')
