@@ -79,6 +79,16 @@ class PublicationTests(unittest.TestCase):
             self.root, guard.Snapshot(self.root, ref=ref, staged=staged), False
         )
 
+    def test_repeat_proposal_preserves_project_policy_formatting(self):
+        guard.propose(self.root, guard.Snapshot(self.root), ".private/review.json")
+        path = self.root / guard.POLICY
+        formatted = json.dumps(json.loads(path.read_text()), indent=4) + "\n"
+        path.write_text(formatted)
+        guard.propose(self.root, guard.Snapshot(self.root), ".private/review.json")
+        self.assertEqual(path.read_text(), formatted)
+        proposal = json.loads((self.root / ".private/review.json").read_text())
+        self.assertEqual(proposal["catalog"][guard.POLICY], guard.sha(formatted.encode()))
+
     def test_ordinary_project_types_do_not_require_document_review(self):
         for name, text in [
             ("src/main.rs", "fn main() {}"),

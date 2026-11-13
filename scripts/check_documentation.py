@@ -572,9 +572,11 @@ def propose(root, snapshot, output, revision=None):
     # Preparing hashes is not approval: the separate trusted state still gates
     # commits and the owner must review the full candidate bundle.
     if not revision:
-        policy["public_markdown"] = {n: h for n, h in catalog.items() if markdown(n) or "!" in n}
-        policy_file = Path(root) / POLICY
-        policy_file.write_text(json.dumps(policy, indent=2, sort_keys=True) + "\n")
+        public = {n: h for n, h in catalog.items() if markdown(n) or "!" in n}
+        if policy.get("public_markdown") != public:
+            policy["public_markdown"] = public
+            policy_file = Path(root) / POLICY
+            policy_file.write_text(json.dumps(policy, indent=2, sort_keys=True) + "\n")
         snapshot = Snapshot(root)
         catalog, errors, warnings = scan(snapshot, inspection_policy)
         if errors:
