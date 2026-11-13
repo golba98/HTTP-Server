@@ -1,0 +1,31 @@
+{
+  "owner": "golba98",
+  "private_git_blobs": [],
+  "private_hashes": [],
+  "private_paths": [
+    ".agents/scratch/",
+    ".agents/teamwork/",
+    ".private/",
+    "docs/_reports/",
+    "docs/tmp/"
+  ],
+  "protected_paths": [
+    ".github/documentation-policy.json",
+    "scripts/check_documentation.py",
+    "scripts/test_documentation_policy.py",
+    ".gitignore",
+    ".npmignore",
+    ".dockerignore",
+    "MANIFEST.in",
+    "scripts/documentation-policy.json",
+    "scripts/check-docs.mjs",
+    "scripts/install-hooks.mjs",
+    "tools/stage-workspace.py",
+    "scripts/package.mjs"
+  ],
+  "public_markdown": {
+    "README.md": "3c7ea20ea027d7e97f2c0f82807e57c35e121bd68601aacf46e9aaa7f43e3304"
+  },
+  "repository": "golba98/HTTP-Server",
+  "version": 1
+}
